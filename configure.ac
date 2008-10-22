@@ -6,14 +6,18 @@ AC_PROG_CC
 AC_PROG_INSTALL
 #AC_PROG_LIBTOOL
 
-#AC_CHECK_LIB(pthread, pthread_create, [], [
-#	echo "Error! You need pthread support."
-#	exit -1
-#	])
+AC_CHECK_LIB(pthread, pthread_create, [], [
+	echo "Error! You need pthread support."
+	exit -1
+	])
 
 test `uname -s` = "Linux" && AC_DEFINE(GNU_LINUX, 1, [Is a GNU-Linux system])
 test `uname -s` = "FreeBSD" && AC_DEFINE(FREEBSD, 1, [Is a FreeBSD system])
-test `uname -s` = "Darwin" && AC_DEFINE(DARWIN, 1, [Is a Darwin system]) AC_DEFINE(FREEBSD, 1, [Darwin is FreeBSD pretty Much])
+if test `uname -s` = "Darwin"
+then
+	AC_DEFINE(DARWIN, 1, [Is a Darwin system])
+	AC_DEFINE(FREEBSD, 1, [Darwin is FreeBSD pretty Much])
+fi
 
 
 AC_CHECK_LIB(event, event_add, [], [
