@@ -1,5 +1,5 @@
 /***************************************************************************
- *   $Id: main.c,v 1.5 2008/10/22 16:31:56 pingwin Exp $
+ *   $Id: main.c,v 1.6 2008/10/22 17:18:42 pingwin Exp $
  *   Copyright (C) 2008 by Brian Smith   *
  *   pingwin@gmail.com   *
  *                                                                         *
@@ -82,7 +82,7 @@
 #endif
 
 #ifndef DEFAULT_RUNNING_GROUP
-#define DEFAULT_RUNNING_GROUP "adm"
+#define DEFAULT_RUNNING_GROUP "daemon"
 #endif
 
 int init();
