@@ -1,0 +1,19 @@
+[DEFAULT]
+verbose = True
+
+[project]
+source = cvs:source
+target = git:target
+root-directory = /home/brian/projects/tmp/cvs
+subdir = .
+state-file = tailor.state
+start-revision = INITIAL
+
+[cvs:source]
+repository = server:/src/master
+module = stub-load-monitor
+
+[git:target]
+repository = git@github.com:pingwin
+module = smtp-connection-monitor.git
+

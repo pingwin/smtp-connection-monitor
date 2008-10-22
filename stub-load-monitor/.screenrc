@@ -1,0 +1,11 @@
+#altscreen on
+hardstatus alwayslastline
+hardstatus string '%{gk}[%{g}%H%{g}][ %{wk}%?%-Lw%?%{=b kR}|%{=d}%{W}%n*%f %t%?(%u)%?%{=b kR}|%{= kw}%?%+Lw%?%?%= %{G}][%{m}%l%{g}]%{=b g}[ %m/%d %c%a ]%{W}'
+#hardstatus string '%{= kG}%-Lw%{= kW}%50> %n%f* %t%{= kG}%+Lw%< %{= kG}%-=%c:%s%{-}'
+shelltitle "$ |bash"
+bindkey -k k; quit
+
+screen -t build 	0
+screen -t run		1
+screen -t shell		2
+screen -t /		emacs src/main.c src/Makefile.am configure.ac Makefile.am
