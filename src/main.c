@@ -1,5 +1,5 @@
 /***************************************************************************
- *   $Id: main.c,v 1.2 2008/10/22 16:03:51 pingwin Exp $
+ *   $Id: main.c,v 1.3 2008/10/22 16:04:17 pingwin Exp $
  *   Copyright (C) 2008 by Brian Smith   *
  *   pingwin@gmail.com   *
  *                                                                         *
@@ -66,7 +66,7 @@
 
 
 #ifndef WATCH_PORT
-#define WATCH_PORT 8000
+#define WATCH_PORT 25
 #endif
 
 #ifndef MAX_CLIENTS
