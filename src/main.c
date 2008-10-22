@@ -1,5 +1,5 @@
 /***************************************************************************
- *   $Id: main.c,v 1.3 2008/10/22 16:04:17 pingwin Exp $
+ *   $Id: main.c,v 1.4 2008/10/22 16:29:14 pingwin Exp $
  *   Copyright (C) 2008 by Brian Smith   *
  *   pingwin@gmail.com   *
  *                                                                         *
@@ -138,6 +138,8 @@ int port_conn_count() {
 
 struct svr_status_t *get_current_status() {
 	struct svr_status_t *status = malloc(sizeof(struct svr_status_t));
+	bzero(status, sizeof(struct svr_status_t));
+	
 	if (getloadavg((status->load), 3) < 0) {
 		perror("getloadavg");
 		return NULL;
@@ -158,6 +160,13 @@ void socket_read(int fd, short event, void *arg) {
 	bzero(received_key, key_len+1);
 
 	int client_sock = accept(fd, (struct sockaddr *)&client_addr, &l);
+
+	int yes = 1;
+	if (setsockopt(client_sock, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof(int)) < 0) {
+		perror("setsockopt(SO_NOSIGPIPE):");
+		exit(EXIT_FAILURE);
+	}
+
 	bytes_received = recv(client_sock, received_key, key_len, 0);
 
 	if (bytes_received == -1) {
@@ -201,7 +210,12 @@ void *socket_stream(void *arg) {
 	int s = sizeof(struct svr_status_t);
 
 	do {
+#if defined(FREEBSD)
+		bytes_sent = send(client_sock, (const void*)get_current_status(), s, 0);
+#elif defined(GNU_LINUX)
 		bytes_sent = send(client_sock, (const void *)get_current_status(), s, MSG_NOSIGNAL);
+#endif
+		errno = 0;
 		if (bytes_sent == -1) {
 			break;
 		} else if (bytes_sent == 0) {
