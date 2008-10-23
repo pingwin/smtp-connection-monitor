@@ -1,5 +1,5 @@
 /***************************************************************************
- *   $Id: client.c,v 1.1 2008/10/22 16:03:51 pingwin Exp $
+ *   $Id: client.c,v 1.2 2008/10/23 12:47:12 pingwin Exp $
  *   Copyright (C) 2008 by Brian Smith   *
  *   pingwin@gmail.com   *
  *                                                                         *
@@ -32,53 +32,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-#include <syslog.h>
 #include <unistd.h>
-
-
-/* libevent */
-#include <event.h>
 
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-
 #include "includes/stubtypes.h"
 #include "includes/XKConfig.h"
-
-void socket_read(int fd, short event, void *arg) {
-	socklen_t l = sizeof(struct sockaddr);
-	int bytes_received = 0;
-	struct svr_status_t status;
-	struct sockaddr_in *remote_addr = ((struct sockaddr_in *)&arg);
-
-
-	while (1) {
-		bytes_received = recv(fd, (void *)&status, sizeof(struct svr_status_t), 0);
-
-		if (bytes_received == -1) {
-			perror("recv:");
-			close(fd);
-			return;
-		} else if (bytes_received == 0) {
-			printf("Connection Closed\n");
-			close(fd);
-			return;
-		}
-
-		printf("Host: %s Remove Load: %.2f %.2f %.2f Num Connections: %d\n",
-			inet_ntoa(remote_addr->sin_addr),
-			status.load[0],
-			status.load[1],
-			status.load[2],
-			status.num_connections
-			);
-	}
-
-}
 
 int client_connection(const char *host, struct sockaddr_in *dest_addr) {
 	int sock;
@@ -125,21 +87,38 @@ int main(int argc, char *argv[]) {
 
 	if (argc != 2) printUsage();
 
-	struct event ev;
-
-	event_init();
-
 	struct sockaddr_in dest_addr;
+	int bytes_received = 0;
+	socklen_t l = sizeof(struct sockaddr);
+	struct svr_status_t status;
+
 	int sock = client_connection(argv[1], &dest_addr);
 	if (sock < 0) {
 		perror("client_connection");
 		return EXIT_FAILURE;
 	}
 
-	event_set(&ev, sock, EV_WRITE | EV_PERSIST, socket_read, (void *)&dest_addr);
-	event_add(&ev, NULL);
+	while (1) {
+		bytes_received = recv(sock, (void *)&status, sizeof(struct svr_status_t), 0);
 
-	event_dispatch();
+		if (bytes_received == -1) {
+			perror("recv:");
+			close(sock);
+			return EXIT_FAILURE;
+		} else if (bytes_received == 0) {
+			printf("Connection Closed\n");
+			close(sock);
+			return EXIT_FAILURE;
+		}
+
+		printf("Host: %s Remove Load: %.2f %.2f %.2f Num Connections: %d\n",
+			inet_ntoa(dest_addr.sin_addr),
+			status.load[0],
+			status.load[1],
+			status.load[2],
+			status.num_connections
+			);
+	}
 
 	return EXIT_SUCCESS;
 }
