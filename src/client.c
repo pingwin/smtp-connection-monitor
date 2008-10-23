@@ -1,5 +1,5 @@
 /***************************************************************************
- *   $Id: client.c,v 1.2 2008/10/23 12:47:12 pingwin Exp $
+ *   $Id: client.c,v 1.3 2008/10/23 15:46:26 pingwin Exp $
  *   Copyright (C) 2008 by Brian Smith   *
  *   pingwin@gmail.com   *
  *                                                                         *
@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -40,78 +41,109 @@
 #include <netinet/in.h>
 
 #include "includes/stubtypes.h"
-#include "includes/XKConfig.h"
 
-int client_connection(const char *host, struct sockaddr_in *dest_addr) {
+#ifndef MAX_HOSTS
+#define MAX_HOSTS 16
+#endif
+
+char *host_list[ MAX_HOSTS ];
+int num_hosts;
+
+void init_host_list() {
+	int i =0;
+	num_hosts = 0;
+	for (i=0; i<MAX_HOSTS; i ++) {
+		host_list[ i ] = malloc(64);
+		bzero(host_list[ i ], 64);
+	}
+}
+
+int add_to_host_list(const char *host) {
+	if (num_hosts >= MAX_HOSTS)
+		return EXIT_FAILURE;
+	strcpy(host_list[ num_hosts ], host);
+	num_hosts ++;
+}
+
+int load_host_file(const char *host_file) {
+	FILE *fd;
+	char *buf = malloc(64);
+	bzero(buf, 64);
+
+
+	if ((fd = fopen(host_file, "r")) == NULL)
+		return EXIT_FAILURE;
+
+
+	while (fgets(buf, 64, fd) != NULL) {
+		// comment?
+		switch(buf[0]) {
+		case ';': case '#': case '\r': case '\n':
+			bzero(buf, 64);
+			continue;
+		}
+
+		if (buf[ strlen(buf)-1 ] == '\n')
+			buf[ strlen(buf)-1 ] = '\0';
+			if (buf[ strlen(buf)-1 ] == '\r')
+				buf[ strlen(buf)-1 ] = '\0';
+
+		if (add_to_host_list(buf) < 0) {
+			printf("Too many entries in host list: max is (%d)\n", MAX_HOSTS);
+			break;
+		}
+	}
+
+	fclose(fd);
+	free(buf);
+	return EXIT_SUCCESS;
+}
+
+
+void *client_connection(void *arg) {
+// 	int host_key = (int)arg;
 	int sock;
 	int yes = 1;
 	int addr_len = sizeof(struct sockaddr);
+	int bytes_received = 0;
+	struct svr_status_t status;
 
-	if (dest_addr == NULL) {
-		dest_addr = malloc(addr_len);
-	}
-
-	bzero(dest_addr, addr_len);
+	struct sockaddr_in dest_addr;
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("Socket:");
-		return -1;
+		return;
 	}
 
-	dest_addr->sin_family = AF_INET;
-	dest_addr->sin_port = htons( HOST_PORT );
-	dest_addr->sin_addr.s_addr = inet_addr( host );
-	bzero(&(dest_addr->sin_zero), 8);
+	dest_addr.sin_family = AF_INET;
+	dest_addr.sin_port = htons( HOST_PORT );
+	dest_addr.sin_addr.s_addr = inet_addr( (const char*)arg );
+	bzero(&(dest_addr.sin_zero), 8);
 
-	if (connect(sock, (struct sockaddr *)dest_addr, addr_len) < 0) {
+	if (connect(sock, (struct sockaddr *)&dest_addr, addr_len) < 0) {
 		perror("connect:");
-		return -1;
+		return;
 	}
 
-	int bytes_received = 0;
 	if ((bytes_received = send(sock, PASSKEY, strlen(PASSKEY), 0)) < 0) {
 		perror("send:");
-		return -1;
+		return;
 	}
 
-	return sock;
-}
-
-void printUsage() {
-	printf(" -=[ Stub Watcher ]=-\n");
-	printf(" <host> Host IP to watch.\n");
-	exit(EXIT_FAILURE);
-}
-
-int main(int argc, char *argv[]) {
-
-	if (argc != 2) printUsage();
-
-	struct sockaddr_in dest_addr;
-	int bytes_received = 0;
-	socklen_t l = sizeof(struct sockaddr);
-	struct svr_status_t status;
-
-	int sock = client_connection(argv[1], &dest_addr);
-	if (sock < 0) {
-		perror("client_connection");
-		return EXIT_FAILURE;
-	}
-
-	while (1) {
+	while(1) {
 		bytes_received = recv(sock, (void *)&status, sizeof(struct svr_status_t), 0);
 
 		if (bytes_received == -1) {
 			perror("recv:");
 			close(sock);
-			return EXIT_FAILURE;
+			return;
 		} else if (bytes_received == 0) {
 			printf("Connection Closed\n");
 			close(sock);
-			return EXIT_FAILURE;
+			return;
 		}
 
-		printf("Host: %s Remove Load: %.2f %.2f %.2f Num Connections: %d\n",
+		printf("Host: %s\tRL: %.2f %.2f %.2f\tC: %d\n",
 			inet_ntoa(dest_addr.sin_addr),
 			status.load[0],
 			status.load[1],
@@ -119,6 +151,55 @@ int main(int argc, char *argv[]) {
 			status.num_connections
 			);
 	}
+}
+
+void printUsage() {
+	printf(" -=[ Stub Watcher ]=-\n");
+	printf(" <host> Host IP to watch.\n");
+	printf(" -c <confile> Configuration file to load a list of hosts.\n");
+	exit(EXIT_FAILURE);
+}
+
+int main(int argc, char *argv[]) {
+	int opt;
+	int i=0;
+	init_host_list();
+
+	while ((opt = getopt(argc, argv, "hc:")) != -1) {
+		switch (opt) {
+		// help
+		case 'h':
+			printUsage();
+			break;
+		// config file
+		case 'c':
+			if (load_host_file(optarg) == EXIT_FAILURE) {
+				printf("Host File Not Found\n");
+				return EXIT_FAILURE;
+			}
+			break;
+		}
+	}
+
+	if (num_hosts < 1) {
+		if (argc == 2) {
+			add_to_host_list(argv[1]);
+		} else {
+			printUsage();
+		}
+	}
+
+	printf("Watching %d hosts\n", num_hosts);
+	for (i=0; i<num_hosts; i++) {
+		printf("Watching %d %s\n", i, host_list[i]);
+		pthread_t thread_id;
+		pthread_create(&thread_id, NULL, client_connection, (void*)host_list[i]);
+// 		pthread_detach(thread_id);
+	}
+
+	printf("Finished adding\n");
+
+	while (sleep(20)==0);
 
 	return EXIT_SUCCESS;
 }

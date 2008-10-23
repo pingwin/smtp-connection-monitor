@@ -1,5 +1,5 @@
 /***************************************************************************
- *   $Id: main.c,v 1.6 2008/10/22 17:18:42 pingwin Exp $
+ *   $Id: main.c,v 1.7 2008/10/23 15:46:26 pingwin Exp $
  *   Copyright (C) 2008 by Brian Smith   *
  *   pingwin@gmail.com   *
  *                                                                         *
@@ -212,10 +212,10 @@ void *socket_stream(void *arg) {
 	int s = sizeof(struct svr_status_t);
 
 	do {
-#if defined(FREEBSD)
-		bytes_sent = send(client_sock, (const void*)get_current_status(), s, 0);
-#elif defined(GNU_LINUX)
+#if defined(GNU_LINUX)
 		bytes_sent = send(client_sock, (const void *)get_current_status(), s, MSG_NOSIGNAL);
+#else
+		bytes_sent = send(client_sock, (const void*)get_current_status(), s, 0);
 #endif
 
 		if (bytes_sent < 0)
