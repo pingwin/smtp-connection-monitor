@@ -6,10 +6,10 @@ AC_PROG_CC
 AC_PROG_INSTALL
 #AC_PROG_LIBTOOL
 
-AC_CHECK_LIB(pthread, pthread_create, [], [
-	echo "Error! You need pthread support."
-	exit -1
-	])
+#AC_CHECK_LIB(pthread, pthread_create, [], [
+#	echo "Error! You need pthread support."
+#	exit -1
+#	])
 
 test `uname -s` = "Linux" && AC_DEFINE(GNU_LINUX, 1, [Is a GNU-Linux system])
 test `uname -s` = "FreeBSD" && AC_DEFINE(FREEBSD, 1, [Is a FreeBSD system])
