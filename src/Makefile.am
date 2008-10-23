@@ -15,5 +15,5 @@ INCLUDE = -I($top_srcdir)/src -I($top_srcdir)/src/includes $(all_includes)
 SUBDIRS = includes
 
 # add debugging
-AM_CFLAGS = -ggdb -g3
+#AM_CFLAGS = -ggdb -g3
 #-Wall
