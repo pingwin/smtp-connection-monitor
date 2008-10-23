@@ -1,5 +1,5 @@
 /***************************************************************************
- *   $Id: client.c,v 1.3 2008/10/23 15:46:26 pingwin Exp $
+ *   $Id: client.c,v 1.4 2008/10/23 18:38:32 pingwin Exp $
  *   Copyright (C) 2008 by Brian Smith   *
  *   pingwin@gmail.com   *
  *                                                                         *
@@ -33,7 +33,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
+
+#include <event.h>
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -100,19 +101,16 @@ int load_host_file(const char *host_file) {
 }
 
 
-void *client_connection(void *arg) {
-// 	int host_key = (int)arg;
+int client_connection(char *arg) {
 	int sock;
 	int yes = 1;
 	int addr_len = sizeof(struct sockaddr);
-	int bytes_received = 0;
-	struct svr_status_t status;
 
 	struct sockaddr_in dest_addr;
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("Socket:");
-		return;
+		return -1;
 	}
 
 	dest_addr.sin_family = AF_INET;
@@ -122,35 +120,41 @@ void *client_connection(void *arg) {
 
 	if (connect(sock, (struct sockaddr *)&dest_addr, addr_len) < 0) {
 		perror("connect:");
-		return;
+		return -1;
 	}
 
-	if ((bytes_received = send(sock, PASSKEY, strlen(PASSKEY), 0)) < 0) {
+	if (send(sock, PASSKEY, strlen(PASSKEY), 0) < 0) {
 		perror("send:");
+		return -1;
+	}
+
+	return sock;
+}
+
+void socket_read(int sock, short event, void *arg) {
+	int bytes_received =0;
+	struct svr_status_t status;
+// 	struct sockaddr_in *dest_addr = ((struct sockaddr_in *)arg);
+
+	bytes_received = recv(sock, (void *)&status, sizeof(struct svr_status_t), 0);
+
+	if (bytes_received == -1) {
+		perror("recv:");
+		close(sock);
+		return;
+	} else if (bytes_received == 0) {
+		printf("Connection Closed\n");
+		close(sock);
 		return;
 	}
 
-	while(1) {
-		bytes_received = recv(sock, (void *)&status, sizeof(struct svr_status_t), 0);
-
-		if (bytes_received == -1) {
-			perror("recv:");
-			close(sock);
-			return;
-		} else if (bytes_received == 0) {
-			printf("Connection Closed\n");
-			close(sock);
-			return;
-		}
-
-		printf("Host: %s\tRL: %.2f %.2f %.2f\tC: %d\n",
-			inet_ntoa(dest_addr.sin_addr),
-			status.load[0],
-			status.load[1],
-			status.load[2],
-			status.num_connections
-			);
-	}
+	printf("Host: %s\tRL: %.2f %.2f %.2f\tC: %d\n",
+		(char*)arg,
+		status.load[0],
+		status.load[1],
+		status.load[2],
+		status.num_connections
+		);
 }
 
 void printUsage() {
@@ -163,6 +167,8 @@ void printUsage() {
 int main(int argc, char *argv[]) {
 	int opt;
 	int i=0;
+	int sock;
+	struct event ev[ MAX_HOSTS ];
 	init_host_list();
 
 	while ((opt = getopt(argc, argv, "hc:")) != -1) {
@@ -189,15 +195,20 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	event_init();
+
 	printf("Watching %d hosts\n", num_hosts);
 	for (i=0; i<num_hosts; i++) {
 		printf("Watching %d %s\n", i, host_list[i]);
-		pthread_t thread_id;
-		pthread_create(&thread_id, NULL, client_connection, (void*)host_list[i]);
-// 		pthread_detach(thread_id);
+		sock = client_connection(host_list[i]);
+		event_set(&ev[ i ], sock, EV_WRITE | EV_PERSIST, socket_read, host_list[i]);
+		event_add(&ev[ i ], NULL);
 	}
 
+
 	printf("Finished adding\n");
+
+	event_dispatch();
 
 	while (sleep(20)==0);
 
