@@ -1,5 +1,5 @@
 /***************************************************************************
- *   $Id: client.c,v 1.4 2008/10/23 18:38:32 pingwin Exp $
+ *   $Id: client.c,v 1.5 2008/10/24 00:10:31 pingwin Exp $
  *   Copyright (C) 2008 by Brian Smith   *
  *   pingwin@gmail.com   *
  *                                                                         *
@@ -40,6 +40,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <netdb.h>
 
 #include "includes/stubtypes.h"
 
@@ -115,7 +116,9 @@ int client_connection(char *arg) {
 
 	dest_addr.sin_family = AF_INET;
 	dest_addr.sin_port = htons( HOST_PORT );
-	dest_addr.sin_addr.s_addr = inet_addr( (const char*)arg );
+	dest_addr.sin_addr.s_addr = inet_addr( inet_ntoa(
+		*((struct in_addr*)gethostbyname( (const char*)arg )->h_addr)
+		));
 	bzero(&(dest_addr.sin_zero), 8);
 
 	if (connect(sock, (struct sockaddr *)&dest_addr, addr_len) < 0) {
