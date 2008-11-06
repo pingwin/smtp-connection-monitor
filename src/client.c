@@ -1,5 +1,5 @@
 /***************************************************************************
- *   $Id: client.c,v 1.5 2008/10/24 00:10:31 pingwin Exp $
+ *   $Id: client.c,v 1.6 2008/11/06 16:21:48 pingwin Exp $
  *   Copyright (C) 2008 by Brian Smith   *
  *   pingwin@gmail.com   *
  *                                                                         *
@@ -85,10 +85,12 @@ int load_host_file(const char *host_file) {
 			continue;
 		}
 
-		if (buf[ strlen(buf)-1 ] == '\n')
+		if (buf[ strlen(buf)-1 ] == '\n') {
 			buf[ strlen(buf)-1 ] = '\0';
-			if (buf[ strlen(buf)-1 ] == '\r')
+			if (buf[ strlen(buf)-1 ] == '\r') {
 				buf[ strlen(buf)-1 ] = '\0';
+			}
+		}
 
 		if (add_to_host_list(buf) < 0) {
 			printf("Too many entries in host list: max is (%d)\n", MAX_HOSTS);
@@ -192,6 +194,9 @@ int main(int argc, char *argv[]) {
 
 	if (num_hosts < 1) {
 		if (argc == 2) {
+			if (strlen(argv[1]) < 5)
+				printUsage();
+
 			add_to_host_list(argv[1]);
 		} else {
 			printUsage();
@@ -208,12 +213,8 @@ int main(int argc, char *argv[]) {
 		event_add(&ev[ i ], NULL);
 	}
 
-
 	printf("Finished adding\n");
-
 	event_dispatch();
-
-	while (sleep(20)==0);
 
 	return EXIT_SUCCESS;
 }
