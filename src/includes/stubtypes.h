@@ -1,5 +1,5 @@
 /***************************************************************************
- *   $Id: stubtypes.h,v 1.1 2008/10/22 16:03:51 pingwin Exp $
+ *   $Id: stubtypes.h,v 1.2 2008/12/05 10:56:08 pingwin Exp $
  *   Copyright (C) 2008 by Brian Smith   *
  *   pingwin@gmail.com   *
  *                                                                         *
@@ -40,7 +40,7 @@ extern "C" {
 	#endif
 
 	#ifndef PASSKEY
-	#define PASSKEY ")(@#$*XCNFO*DMVNDJR)##=-f=-23948skdfjnmlkadfn:#$J#)@(*jdkafj"
+	#define PASSKEY "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 	#endif
 
 	struct svr_status_t {
